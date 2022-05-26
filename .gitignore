@@ -1,2 +1,5 @@
 /userdatadir
-/node_modules
+config.json
+accounts.json
+*.txt
+node_modules/
