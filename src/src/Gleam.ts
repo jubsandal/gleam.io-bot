@@ -47,7 +47,7 @@ async function setupBrowser(adsSerialNumber: number) {
         }
         try {
                 let puppeteerWs = <string>res.data.data.ws.puppeteer
-                browser = await pupExtra.connect({
+                browser = await puppeteer.connect({
                         browserWSEndpoint: puppeteerWs
                 })
         } catch (e) {
@@ -61,37 +61,26 @@ Config()
 
 let profiles: { ads: number, twitterName: string, wallet: string, email: string, instagram: { login: string, password: string } }[] = loader()
 
+console.log(profiles)
+
 const link = "https://wn.nr/L82wwm"
 
 let updatedProfiles = new Array()
 
 for (let profile of profiles) {
-	const start = new Date().getTime()
-	console.log("-".repeat(20))
-	console.log("Account:", profile.ads)
-	console.log("-".repeat(20))
-	let browser
-	try {
-		browser = await setupBrowser(profile.ads)
-		let twitterName = await Promise.race([
-			await grind(browser, link, profile),
-			new Promise((_, reject) => { setTimeout(() => reject("timeout"), 180000) })
-		])
-		if (twitterName === false || twitterName === "timeout" || !twitterName) {
-			console.log("Error on ads", profile.ads)
-		} else if (typeof twitterName === "string") {
-			profile.twitterName = twitterName
-			updatedProfiles.push(profile)
-			fs.writeFileSync("./updatedProfiles", JSON.stringify(updatedProfiles))
-		}
-	} catch (error) {
-		console.log("Fatal error on ads", profile.ads, error)
-	} finally {
-		if (browser) {
-			await browser.close()
-		}
-		console.log("-".repeat(20))
-		console.log("elapced:", (new Date().getTime()-start)+'ms')
-		console.log("-".repeat(20))
-	}
+        // let result = await gleam.getGiveaways(browser, 100, i);
+        let browser = await setupBrowser(profile.ads)
+        try {
+                let twitterName = await grind(browser, link, profile)
+                if (twitterName === false) {
+                        console.log("Error on ads", profile.ads)
+                } else {
+                        profile.twitterName = twitterName
+                        updatedProfiles.push(profile)
+                        fs.writeFileSync("./updatedProfiles", JSON.stringify(updatedProfiles))
+                }
+        } catch (error) {
+                console.log("Fatal error on ads", profile.ads, error)
+        }
+        await browser.close()
 }

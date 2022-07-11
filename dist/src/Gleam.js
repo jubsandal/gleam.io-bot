@@ -1,3 +1,4 @@
+import puppeteer from 'puppeteer';
 import RecaptchaPlugin from 'puppeteer-extra-plugin-recaptcha';
 import pupExtra from 'puppeteer-extra';
 import axios from 'axios';
@@ -24,7 +25,7 @@ async function setupBrowser(adsSerialNumber) {
     }
     try {
         let puppeteerWs = res.data.data.ws.puppeteer;
-        browser = await pupExtra.connect({
+        browser = await puppeteer.connect({
             browserWSEndpoint: puppeteerWs
         });
     }
@@ -36,24 +37,17 @@ async function setupBrowser(adsSerialNumber) {
 }
 Config();
 let profiles = loader();
+console.log(profiles);
 const link = "https://wn.nr/L82wwm";
 let updatedProfiles = new Array();
 for (let profile of profiles) {
-    const start = new Date().getTime();
-    console.log("-".repeat(20));
-    console.log("Account:", profile.ads);
-    console.log("-".repeat(20));
-    let browser;
+    let browser = await setupBrowser(profile.ads);
     try {
-        browser = await setupBrowser(profile.ads);
-        let twitterName = await Promise.race([
-            await grind(browser, link, profile),
-            new Promise((_, reject) => { setTimeout(() => reject("timeout"), 180000); })
-        ]);
-        if (twitterName === false || twitterName === "timeout" || !twitterName) {
+        let twitterName = await grind(browser, link, profile);
+        if (twitterName === false) {
             console.log("Error on ads", profile.ads);
         }
-        else if (typeof twitterName === "string") {
+        else {
             profile.twitterName = twitterName;
             updatedProfiles.push(profile);
             fs.writeFileSync("./updatedProfiles", JSON.stringify(updatedProfiles));
@@ -62,12 +56,5 @@ for (let profile of profiles) {
     catch (error) {
         console.log("Fatal error on ads", profile.ads, error);
     }
-    finally {
-        if (browser) {
-            await browser.close();
-        }
-        console.log("-".repeat(20));
-        console.log("elapced:", (new Date().getTime() - start) + 'ms');
-        console.log("-".repeat(20));
-    }
+    await browser.close();
 }

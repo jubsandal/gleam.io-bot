@@ -1,4 +1,6 @@
 /userdatadir
+profiles*
+updatedProfiles*
 config.json
 accounts.json
 *.txt

@@ -1,6 +1,9 @@
-import * as selector from './selector.js';
-import { sleep } from './utils.js';
-export async function getMethodName(page, entryMethod) {
+import puppeteer from 'puppeteer'
+import * as selector from './selector.js'
+
+import { sleep } from './utils.js'
+
+export async function getMethodName(page: puppeteer.Page, entryMethod: puppeteer.ElementHandle<Element>) {
     let methodName = await page.evaluate(el => el.getAttribute("data-track-event"), entryMethod);
     if (methodName == '###APP_NAME### Click|custom|action') {
         methodName = await page.evaluate(el => el.innerHTML, await entryMethod.$("span[class*='entry-method-title']"));
@@ -8,36 +11,43 @@ export async function getMethodName(page, entryMethod) {
     }
     return methodName;
 }
-export async function checkIfAvailable(page) {
+
+export async function checkIfAvailable(page: puppeteer.Page) {
     const triangle = await page.$(selector.gleam_triangle);
     const globe = await page.$(selector.gleam_globe);
     const content = await page.$(selector.emContent);
     if (triangle == null && globe == null && content != null) {
-        console.log("Giveway avalible");
+        console.log("Giveway avalible")
         return true;
-    }
-    else {
-        console.log("Giveway not avalible");
+    } else {
+        console.log("Giveway not avalible")
         return false;
     }
 }
-export async function checkForReCapcha(page) {
-    page.title();
-    await sleep(10000);
-    return true;
+
+export async function checkForReCapcha(page: puppeteer.Page) {
+    page.title()
+
+    await sleep(10000)
+
+    return true
 }
-export async function solverReCapcha(page) {
-    page.title();
-    await sleep(1000);
-    return true;
+
+export async function solverReCapcha(page: puppeteer.Page) {
+    page.title()
+    await sleep(1000)
+    return true
 }
-export async function passVerification(page) {
+
+export async function passVerification(page: puppeteer.Page) {
     let verification = false;
     try {
         await page.waitForSelector(selector.vf, {
             timeout: 500,
-        });
+        })
         verification = true;
+
+        // TODO randomize all
         const inGameNameField = await page.$(selector.vf_inGameName);
         if (inGameNameField != null) {
             await inGameNameField.type("Julien");
@@ -52,7 +62,7 @@ export async function passVerification(page) {
         }
         const countrySelect = await page.$(selector.vf_country);
         if (countrySelect != null) {
-            await countrySelect.select("Russia");
+            await countrySelect.select("Russia")
         }
         const companyField = await page.$(selector.vf_company);
         if (companyField != null) {
@@ -94,16 +104,15 @@ export async function passVerification(page) {
             timeout: 2000
         });
         await saveButton?.click();
-    }
-    catch (error) { }
+    } catch (error) {}
+
     try {
         const textArea = await page.waitForSelector(selector.emExpanded + " textarea", {
             timeout: 500,
-        });
+        })
         verification = true;
         textArea?.type("Yes");
-    }
-    catch (error) { }
+    } catch (error) {}
     if (verification) {
         console.log('Verification passed');
     }

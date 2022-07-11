@@ -3,88 +3,124 @@ import * as selector from '../selector.js'
 import * as helpers from '../helpers.js'
 import * as methods from './methods.js'
 
+import { sleep } from './../utils.js'
+
 export async function follow(page: puppeteer.Page, entryMethod: puppeteer.ElementHandle<Element>) {
-    if ((await page.$(selector.emExpanded)) == null) {
-        await entryMethod.click();
-    }
-    helpers.passVerification(page);
-    try {
-        await page.waitForSelector(selector.em_twitterButton, {
-            timeout: 3000
-        })
+	if ((await page.$(selector.emExpanded)) == null) {
+		await entryMethod.click();
+	}
+	helpers.passVerification(page);
+	try {
+		await page.waitForSelector(selector.em_twitterButton, {
+			timeout: 3000
+		})
 
-        let [popup] = await Promise.all([
-            new Promise(( resolve ) => page.once('popup', resolve)),
-            await page.click(selector.em_twitterButton)
-        ]);
+		let [popup] = await Promise.all([
+			new Promise(( resolve ) => page.once('popup', resolve)),
+				await page.click(selector.em_twitterButton)
+		]);
 
-        // @ts-ignore
-        await popup.waitFor('body');
-        // @ts-ignore
-        await popup.waitFor(500);
-        // @ts-ignore
-        await popup.waitForSelector("button:not([disabled])");
+		await sleep(2000)
 
-        // @ts-ignore
-        let text = await popup.evaluate("document.querySelector('button:not([disabled]) strong').innerText");
-        if (text != 'Following') {
-        // @ts-ignore
-            await popup.click("button:not([disabled])");
-        // @ts-ignore
-            await popup.waitForFunction("document.querySelector('button:not([disabled]) strong').innerText.includes('Following')");
-        }
+		// @ts-ignore
+		await popup.waitFor('body');
+		// @ts-ignore
+		await popup.waitFor(500);
+		// @ts-ignore
+		await popup.waitForSelector('div[role="button"]');
 
-        // @ts-ignore
-        text = await popup.evaluate("document.querySelector('button:not([disabled]) strong').innerText");
-        if (text != 'Following') {
-        // @ts-ignore
-            await popup.click("button:not([disabled])");
-        // @ts-ignore
-            await popup.waitForFunction("document.querySelector('button:not([disabled]) strong').innerText.includes('Following')");
-        }
+		// @ts-ignore
+		let text = await popup.evaluate("document.querySelector('div[role=\"button\"]').innerText");
+		if (text != 'Following') {
+			// @ts-ignore
+			await popup.click('div[role="button"]');
+		}
 
-        // @ts-ignore
-        await popup.close();
-        await page.waitForSelector(selector.em_continueEnabledButton);
-        await page.click(selector.em_continueEnabledButton);
+		await sleep(1000)
 
-        await page.waitForSelector(selector.emExpanded, {
-            hidden: true
-        });
-        await page.waitForSelector(selector.em_fa_check);
-    } catch (error) {}
+		// @ts-ignore
+		await popup.close();
+		await page.waitForSelector(selector.em_continueEnabledButton);
+		await page.click(selector.em_continueEnabledButton);
+
+		await page.waitForSelector(selector.emExpanded, {
+			hidden: true
+		});
+		await page.waitForSelector(selector.em_fa_check);
+	} catch (error) {}
+}
+
+export async function retweet(page: puppeteer.Page, entryMethod: puppeteer.ElementHandle<Element>) {
+	if ((await page.$(selector.emExpanded)) == null) {
+		await entryMethod.click();
+	}
+	helpers.passVerification(page);
+	try {
+		await page.waitForSelector(selector.em_twitterButton, {
+			timeout: 3000
+		})
+
+		let [popup] = await Promise.all([
+			new Promise(( resolve ) => page.once('popup', resolve)),
+				await page.click(selector.em_twitterButton)
+		]);
+
+		await sleep(2000)
+
+		// @ts-ignore
+		await popup.waitFor('body');
+		// @ts-ignore
+		await popup.waitFor(500);
+		// @ts-ignore
+		await popup.waitForSelector('div[role="button"]');
+
+		// @ts-ignore
+		await popup.click('div[role="button"]');
+
+		await sleep(1000)
+
+		// @ts-ignore
+		await popup.close();
+		await page.waitForSelector(selector.em_continueEnabledButton);
+		await page.click(selector.em_continueEnabledButton);
+
+		await page.waitForSelector(selector.emExpanded, {
+			hidden: true
+		});
+		await page.waitForSelector(selector.em_fa_check);
+	} catch (error) {}
 }
 
 export async function tweet(page: puppeteer.Page, entryMethod: puppeteer.ElementHandle<Element>) {
-    if ((await page.$(selector.emExpanded)) == null) {
-        await entryMethod.click();
-    }
-    helpers.passVerification(page);
+	if ((await page.$(selector.emExpanded)) == null) {
+		await entryMethod.click();
+	}
+	helpers.passVerification(page);
 
-    try {
-        await page.waitForSelector(selector.em_twitterButton, {
-            timeout: 3000
-        })
+	try {
+		await page.waitForSelector(selector.em_twitterButton, {
+			timeout: 3000
+		})
 
-        let [popup] = await Promise.all([
-            new Promise(resolve => page.once('popup', resolve)),
-            await page.click(selector.em_twitterButton)
-        ]);
+		let [popup] = await Promise.all([
+			new Promise(resolve => page.once('popup', resolve)),
+				await page.click(selector.em_twitterButton)
+		]);
 
-        // @ts-ignore
-        await popup.waitFor('body');
-        // @ts-ignore
-        await popup.waitFor(500);
-        // @ts-ignore
-        await popup.waitForSelector("input[class*=submit]:not([disabled])");
-        // @ts-ignore
-        await popup.click("input[class*=submit]:not([disabled])");
-        await page.waitForSelector(selector.em_continueEnabledButton);
-        await page.click(selector.em_continueEnabledButton);
+		// @ts-ignore
+		await popup.waitFor('body');
+		// @ts-ignore
+		await popup.waitFor(500);
+		// @ts-ignore
+		await popup.waitForSelector("input[class*=submit]:not([disabled])");
+		// @ts-ignore
+		await popup.click("input[class*=submit]:not([disabled])");
+		await page.waitForSelector(selector.em_continueEnabledButton);
+		await page.click(selector.em_continueEnabledButton);
 
-        await page.waitForSelector(selector.emExpanded, {
-            hidden: true
-        });
-        await page.waitForSelector(selector.em_fa_check);
-    } catch (error) {}
+		await page.waitForSelector(selector.emExpanded, {
+			hidden: true
+		});
+		await page.waitForSelector(selector.em_fa_check);
+	} catch (error) {}
 }
