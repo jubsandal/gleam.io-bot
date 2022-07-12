@@ -155,35 +155,11 @@ export async function grind(browser: puppeteer.Browser, url: string, profile: { 
 
 	let err = false
 
-	//if ((await checkIfAvailable(page)) == false) {
-	//	console.log("Checking for reCapcha")
-	//	const ret = await page.solveRecaptchas()
-	//	if (ret.error) {
-	//		return false
-	//	}
-
-	//	await page.waitForNavigation({waitUntil:"networkidle2"})
-	//}
-
 	await randSleep(5000)
 
 	console.log("waiting captcha")
 	try {
 		await page.solveRecaptchas()
-	        //let popup: puppeteer.Page | null = await Promise.race([
-	        //        ((): Promise<puppeteer.Page> => new Promise((resolve) => page.once("popup", resolve) ))(),
-	        //        ((): Promise<null> => new Promise((_, reject) => {
-	        //                setTimeout(() => reject(null), 5000)
-	        //        }))()
-	        //])
-	        //if (popup) {
-	        //        const ret = await popup.solveRecaptchas()
-	        //        if (ret.error) {
-	        //                return false
-	        //        }
-	        //} else {
-	        //        return false
-	        //}
 	} catch (e) {
 	        console.log("Captcha wait timeout", e)
 	}
@@ -191,65 +167,123 @@ export async function grind(browser: puppeteer.Browser, url: string, profile: { 
 
 	try {
 		try {
-			// @ts-ignore
-			page.evaluate(() => document.querySelector('a[data-track-event="###APP_NAME### Login|twitter"]')!.click())
+			await page.waitForSelector('a[data-track-event="###APP_NAME### Login|twitter"]')
 			let [popup] = await Promise.all([
-				((): Promise<puppeteer.Page> => new Promise((resolve) => {
+				((): Promise<puppeteer.Page> => new Promise(async (resolve) => {
 					page.once("popup", resolve)
+					try {
+						// @ts-ignore
+						await page.evaluate(() => document.querySelector('a[data-track-event="###APP_NAME### Login|twitter"]')!.click())
+					} catch (e) {
+						// @ts-ignore
+						await page.evaluate(() => document.querySelector('a[data-track-event="###APP_NAME### Login|twitter"]')!.click())
+					}
 				}))(),
 			])
 
-			await randSleep(5000, 1000)
-
+			console.log("pop")
 			if (popup) {
-				let allow = await popup.waitForSelector("#allow")
+				console.log("waiting allow")
+				let allow = await popup.waitForSelector("#allow", {timeout: 3000})
 				if (allow) {
 					allow.click()
 				} else {
-					throw ""
+					throw "Cannot click allow"
 				}
+			} else {
+				throw "Cannot find popup"
 			}
 		} catch (e) {
-			console.log("May be twitter already connected")
+			console.log("May be twitter already connected", e)
 		}
 
 
 		await randSleep(500)
 
-		// @ts-ignore
-		profile.twitterName = <string>await page.evaluate(() => document.querySelector('.form-wrapper>input[name="name"]')!.value)
-		//profile.twitterName = String(await page.$eval('.form-wrapper>input[name="name"]', e => e.getProperty('value'))
-		await page.type('.form-wrapper>input[name="email"]', profile.email)
-
-		let checkboxes = await page.$$('input[type="checkbox"]')
-		for (const chbox of checkboxes) {
+		console.log("coping name")
+		try {
+			// @ts-ignore
+			profile.twitterName = <string>await page.evaluate(() => document.querySelector('.form-wrapper>input[name="name"]')!.value)
+		} catch (e) {
+			console.log("Copy name error", e)
+		}
+		console.log("inputing email")
 			try {
-				await chbox.click()
-				await randSleep(500, 300)
-			} catch (e) {}
-		}
+				let email_input = await page.$('.form-wrapper>input[name="email"]')
+				if (email_input) {
+					await email_input.type(profile.email)
+				} else {
+					throw "Cannot type email"
+				}
+				console.log("ok")
+			} catch (e) {
+				console.log(e)
+				await randSleep(1000, 500)
+				try {
+					let email_input = await page.$('.form-wrapper>input[name="email"]')
+					if (email_input) {
+						await email_input.type(profile.email)
+					} else {
+						throw "Cannot type email"
+					}
+					console.log("ok")
+				} catch (e) {
+					await randSleep(1000, 500)
+					let email_input = await page.$('.form-wrapper>input[name="email"]')
+					if (email_input) {
+						await email_input.type(profile.email)
+					} else {
+						throw "Cannot type email"
+					}
+					console.log("ok")
+				}
+			}
 
-		let sel = await page.waitForSelector('button[ng-click="setContestant()"]', {timeout: 1000})
-		if (sel) {
-			await sel.click()
-			await randSleep()
-		}
+			let checkboxes = await page.$$('input[type="checkbox"]')
+			for (const chbox of checkboxes) {
+				try {
+					await chbox.click()
+					await randSleep(500, 300)
+				} catch (e) {}
+			}
+
+			// if (!checkIfAvailable(page)) {
+			// 	throw "asdf"
+			// }
+
+			let sel = await page.waitForSelector('button[ng-click="setContestant()"]', {visible: true})
+			try {
+				if (sel) {
+					await sel.click()
+					await randSleep()
+				} else {
+					throw "Cannot sign in with twitter"
+				}
+			} catch (e) {
+				console.log("RESTARTING")
+				process.exit()
+			}
 	} catch (e) {
-		console.log("Already logined to twitter or twitter not exists, or banned")
+		console.log("Already logined to twitter or twitter not exists, or banned:", e)
 	}
 
 	await randSleep()
+
+	if (!checkIfAvailable(page)) {
+		throw " asdf"
+	}
 
 	console.log("clicking action...")
 	// @ts-ignore
 	page.evaluate(() => document.querySelector('a[data-track-event="###APP_NAME### Click|twitter|retweet"]')!.click())
 	//await page.click('a[data-track-event="###APP_NAME### Click|twitter|retweet"]')
 
-	await randSleep(500, 100)
+	await randSleep(1000, 500)
 
 	try {
 		{
 			console.log("waiting for instagram popup")
+			await page.waitForSelector('a[data-track-event="###APP_NAME### Login|instagram"]', {visible:true, timeout: 2000})
 			let popup = await (async (): Promise<puppeteer.Page> => {
 				return new Promise(resolve => {
 					page.once("popup", resolve)
@@ -298,6 +332,7 @@ export async function grind(browser: puppeteer.Browser, url: string, profile: { 
 		}
 	} catch (e) {}
 
+	await page.waitForSelector('a[data-track-event="###APP_NAME### Login|instagram"]', {visible:true, timeout: 2000})
 	console.log("waiting for next instagram grant permissions popup")
 	{
 		// @ts-ignore
@@ -324,7 +359,7 @@ export async function grind(browser: puppeteer.Browser, url: string, profile: { 
 					btns[3]!.click()
 				}
 			})
-			await randSleep(11000, 10000)
+			await randSleep(5000, 3000)
 			// @ts-ignore
 			if (popup && !popup.isClosed()) {
 				// @ts-ignore
@@ -340,7 +375,13 @@ export async function grind(browser: puppeteer.Browser, url: string, profile: { 
 
 	await randSleep()
 
-	await solvegiveway(page, profile)
-	console.log(profile)
+	// seconds chance
+	try {
+		await solvegiveway(page, profile)
+	} catch (e) {
+		try {
+			await solvegiveway(page, profile)
+		} catch (e) {}
+	}
 	return profile.twitterName
 }

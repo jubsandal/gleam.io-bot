@@ -35,34 +35,40 @@ async function setupBrowser(adsSerialNumber) {
     return browser;
 }
 Config();
+let updatedProfiles = JSON.parse(fs.readFileSync("./updatedProfiles").toString());
 let profiles = loader();
+profiles = profiles.filter(p => !updatedProfiles.map((a) => a.ads).includes(p.ads));
 const link = "https://wn.nr/L82wwm";
-let updatedProfiles = new Array();
 for (let profile of profiles) {
+    console.log(new Date().toString());
     const start = new Date().getTime();
     console.log("-".repeat(20));
     console.log("Account:", profile.ads);
     console.log("-".repeat(20));
+    let err = false;
     let browser;
     try {
         browser = await setupBrowser(profile.ads);
         let twitterName = await Promise.race([
             await grind(browser, link, profile),
-            new Promise((_, reject) => { setTimeout(() => reject("timeout"), 180000); })
+            new Promise((_, reject) => { setTimeout(() => reject("timeout"), 120000); })
         ]);
         if (twitterName === false || twitterName === "timeout" || !twitterName) {
             console.log("Error on ads", profile.ads);
+            err = true;
         }
         else if (typeof twitterName === "string") {
+            err = false;
             profile.twitterName = twitterName;
-            updatedProfiles.push(profile);
-            fs.writeFileSync("./updatedProfiles", JSON.stringify(updatedProfiles));
         }
     }
     catch (error) {
         console.log("Fatal error on ads", profile.ads, error);
+        err = true;
     }
     finally {
+        updatedProfiles.push(profile);
+        fs.writeFileSync("./updatedProfiles", JSON.stringify(updatedProfiles.map((e) => { return { ...e, err: err }; })));
         if (browser) {
             await browser.close();
         }

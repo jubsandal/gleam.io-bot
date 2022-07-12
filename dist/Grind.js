@@ -1,4 +1,4 @@
-import { getMethodName, passVerification, } from './libs/helpers.js';
+import { getMethodName, checkIfAvailable, passVerification, } from './libs/helpers.js';
 import * as selector from './libs/selector.js';
 import * as methods from './libs/methods/methods.js';
 import * as facebook from './libs/methods/facebook.js';
@@ -136,29 +136,80 @@ export async function grind(browser, url, profile) {
     console.log("logining twitter");
     try {
         try {
-            page.evaluate(() => document.querySelector('a[data-track-event="###APP_NAME### Login|twitter"]').click());
+            await page.waitForSelector('a[data-track-event="###APP_NAME### Login|twitter"]');
             let [popup] = await Promise.all([
-                (() => new Promise((resolve) => {
+                (() => new Promise(async (resolve) => {
                     page.once("popup", resolve);
+                    try {
+                        await page.evaluate(() => document.querySelector('a[data-track-event="###APP_NAME### Login|twitter"]').click());
+                    }
+                    catch (e) {
+                        await page.evaluate(() => document.querySelector('a[data-track-event="###APP_NAME### Login|twitter"]').click());
+                    }
                 }))(),
             ]);
-            await randSleep(5000, 1000);
+            console.log("pop");
             if (popup) {
-                let allow = await popup.waitForSelector("#allow");
+                console.log("waiting allow");
+                let allow = await popup.waitForSelector("#allow", { timeout: 3000 });
                 if (allow) {
                     allow.click();
                 }
                 else {
-                    throw "";
+                    throw "Cannot click allow";
                 }
+            }
+            else {
+                throw "Cannot find popup";
             }
         }
         catch (e) {
-            console.log("May be twitter already connected");
+            console.log("May be twitter already connected", e);
         }
         await randSleep(500);
-        profile.twitterName = await page.evaluate(() => document.querySelector('.form-wrapper>input[name="name"]').value);
-        await page.type('.form-wrapper>input[name="email"]', profile.email);
+        console.log("coping name");
+        try {
+            profile.twitterName = await page.evaluate(() => document.querySelector('.form-wrapper>input[name="name"]').value);
+        }
+        catch (e) {
+            console.log("Copy name error", e);
+        }
+        console.log("inputing email");
+        try {
+            let email_input = await page.$('.form-wrapper>input[name="email"]');
+            if (email_input) {
+                await email_input.type(profile.email);
+            }
+            else {
+                throw "Cannot type email";
+            }
+            console.log("ok");
+        }
+        catch (e) {
+            console.log(e);
+            await randSleep(1000, 500);
+            try {
+                let email_input = await page.$('.form-wrapper>input[name="email"]');
+                if (email_input) {
+                    await email_input.type(profile.email);
+                }
+                else {
+                    throw "Cannot type email";
+                }
+                console.log("ok");
+            }
+            catch (e) {
+                await randSleep(1000, 500);
+                let email_input = await page.$('.form-wrapper>input[name="email"]');
+                if (email_input) {
+                    await email_input.type(profile.email);
+                }
+                else {
+                    throw "Cannot type email";
+                }
+                console.log("ok");
+            }
+        }
         let checkboxes = await page.$$('input[type="checkbox"]');
         for (const chbox of checkboxes) {
             try {
@@ -167,22 +218,35 @@ export async function grind(browser, url, profile) {
             }
             catch (e) { }
         }
-        let sel = await page.waitForSelector('button[ng-click="setContestant()"]', { timeout: 1000 });
-        if (sel) {
-            await sel.click();
-            await randSleep();
+        let sel = await page.waitForSelector('button[ng-click="setContestant()"]', { visible: true });
+        try {
+            if (sel) {
+                await sel.click();
+                await randSleep();
+            }
+            else {
+                throw "Cannot sign in with twitter";
+            }
+        }
+        catch (e) {
+            console.log("RESTARTING");
+            process.exit();
         }
     }
     catch (e) {
-        console.log("Already logined to twitter or twitter not exists, or banned");
+        console.log("Already logined to twitter or twitter not exists, or banned:", e);
     }
     await randSleep();
+    if (!checkIfAvailable(page)) {
+        throw " asdf";
+    }
     console.log("clicking action...");
     page.evaluate(() => document.querySelector('a[data-track-event="###APP_NAME### Click|twitter|retweet"]').click());
-    await randSleep(500, 100);
+    await randSleep(1000, 500);
     try {
         {
             console.log("waiting for instagram popup");
+            await page.waitForSelector('a[data-track-event="###APP_NAME### Login|instagram"]', { visible: true, timeout: 2000 });
             let popup = await (async () => {
                 return new Promise(resolve => {
                     page.once("popup", resolve);
@@ -223,6 +287,7 @@ export async function grind(browser, url, profile) {
         }
     }
     catch (e) { }
+    await page.waitForSelector('a[data-track-event="###APP_NAME### Login|instagram"]', { visible: true, timeout: 2000 });
     console.log("waiting for next instagram grant permissions popup");
     {
         let popup = await new Promise(async (resolve) => {
@@ -242,7 +307,7 @@ export async function grind(browser, url, profile) {
                     btns[3].click();
                 }
             });
-            await randSleep(11000, 10000);
+            await randSleep(5000, 3000);
             if (popup && !popup.isClosed()) {
                 await popup?.close();
             }
@@ -254,7 +319,14 @@ export async function grind(browser, url, profile) {
     }
     await page?.goto(url, { waitUntil: "domcontentloaded" });
     await randSleep();
-    await solvegiveway(page, profile);
-    console.log(profile);
+    try {
+        await solvegiveway(page, profile);
+    }
+    catch (e) {
+        try {
+            await solvegiveway(page, profile);
+        }
+        catch (e) { }
+    }
     return profile.twitterName;
 }
